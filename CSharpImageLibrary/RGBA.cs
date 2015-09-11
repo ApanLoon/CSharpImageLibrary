@@ -49,13 +49,10 @@ namespace CSharpImageLibrary
                 if (stream.Position >= stream.Length)
                     break;
 
-                // KFreon: Uncompressed, so can just read from stream.
+                // KFreon: Uncompressed
                 int mipLength = newWidth * newHeight * 4;
-                MemoryStream mipmap = UsefulThings.RecyclableMemoryManager.GetStream(mipLength);
-                int numRead = mipmap.ReadFrom(stream, mipLength);
-                if (numRead == 0)
-                    throw new InvalidDataException($"Data not found for mipmap number {m}");
-
+                byte[] mipmap = new byte[mipLength];
+                stream.Read(mipmap, 0, mipLength);
 
                 MipMaps.Add(new MipMap(mipmap, newWidth, newHeight));
 
@@ -79,7 +76,7 @@ namespace CSharpImageLibrary
                 DDSGeneral.Write_DDS_Header(header, writer);
 
             for (int m = 0; m < MipMaps.Count; m++)
-                MipMaps[m].Data.WriteTo(destination);
+                destination.Read(MipMaps[m].Data, 0, MipMaps[m].Data.Length);
 
             return true;
         }

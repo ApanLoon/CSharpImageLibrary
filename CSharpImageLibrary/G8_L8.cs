@@ -53,12 +53,10 @@ namespace CSharpImageLibrary
         /// <returns>True on success.</returns>
         internal static bool Save(List<MipMap> MipMaps, Stream destination)
         {
-            Action<BinaryWriter, Stream, int, int> PixelWriter = (writer, pixels, unused, unused2) =>
+            Action<BinaryWriter, byte[], int, int, int> PixelWriter = (writer, pixels, position, unused, unused2) =>
             {
                 // BGRA
-                byte[] colours = new byte[3];
-                pixels.Read(colours, 0, 3);
-                pixels.Position++;  // Skip alpha
+                byte[] colours = pixels.GetRange(position, 3);
 
                 // KFreon: Weight colours to look proper. Dunno if this affects things but anyway...Got weightings from ATi Compressonator
                 int b1 = (int)(colours[0] * 3 * 0.082);

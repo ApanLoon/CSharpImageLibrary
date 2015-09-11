@@ -33,8 +33,8 @@ namespace CSharpImageLibrary
         /// </summary>
         static ImageEngine()
         {
-            WindowsWICCodecsAvailable = Win8_10.WindowsCodecsPresent();
-            //WindowsWICCodecsAvailable = false;
+            //WindowsWICCodecsAvailable = Win8_10.WindowsCodecsPresent();
+            WindowsWICCodecsAvailable = false;
         }
 
 
@@ -151,11 +151,10 @@ namespace CSharpImageLibrary
                 if (MipMaps.Count == 1 && needsResize)
                 {
                     // KFreon: No Mip, so resize
-                    System.Drawing.Bitmap img = new System.Drawing.Bitmap(MipMaps[0].Data);
+                    System.Drawing.Bitmap img = UsefulThings.WinForms.Misc.CreateBitmap(MipMaps[0].Data, MipMaps[0].Width, MipMaps[0].Height);
                     System.Drawing.Bitmap newimg = (System.Drawing.Bitmap)UsefulThings.WinForms.Misc.resizeImage(img, new System.Drawing.Size(decodeWidth, decodeHeight));
 
-                    var data = UsefulThings.RecyclableMemoryManager.GetStream(UsefulThings.WinForms.Misc.GetPixelDataFromBitmap(newimg));
-                    MipMaps[0].Data = data;
+                    MipMaps[0].Data = UsefulThings.WinForms.Misc.GetPixelDataFromBitmap(newimg);
                     MipMaps[0].Width = decodeWidth;
                     MipMaps[0].Height = decodeHeight;
                 }
@@ -193,6 +192,10 @@ namespace CSharpImageLibrary
             List<MipMap> MipMaps = LoadEsoterics(stream, Format);
             if (MipMaps != null && MipMaps.Count != 0)
             {
+                // KFreon: Don't want to resize, so just return.
+                if (desiredMaxDimension == 0)
+                    return MipMaps;
+
                 // scale and return;
                 if (WindowsWICCodecsAvailable)
                 {
@@ -212,7 +215,7 @@ namespace CSharpImageLibrary
                         //int stride = 4 * (mip.Width * 32 + 31) / 32;
                         int stride = 4 * mip.Width;
                         JpegBitmapEncoder encoder = new JpegBitmapEncoder();
-                        BitmapFrame frame = BitmapFrame.Create(BitmapFrame.Create(mip.Width, mip.Height, 96, 96, PixelFormats.Bgra32, BitmapPalettes.Halftone256Transparent, mip.Data.ToArray(), stride));
+                        BitmapFrame frame = BitmapFrame.Create(BitmapFrame.Create(mip.Width, mip.Height, 96, 96, PixelFormats.Bgra32, BitmapPalettes.Halftone256Transparent, mip.Data, stride));
                         encoder.Frames.Add(frame);
                         var output = UsefulThings.RecyclableMemoryManager.GetStream((int)mip.Data.Length);
                         encoder.Save(output);
@@ -230,7 +233,7 @@ namespace CSharpImageLibrary
                     byte[] pixels = new byte[mip.Data.Length];
                     Marshal.Copy(data.Scan0, pixels, 0, (int)mip.Data.Length);
                     bmp.UnlockBits(data);
-                    MipMap newmip = new MipMap(UsefulThings.RecyclableMemoryManager.GetStream(pixels), mip.Width, mip.Height);
+                    MipMap newmip = new MipMap(pixels, mip.Width, mip.Height);
                     MipMaps.Add(newmip);
                 }
             }
@@ -270,9 +273,6 @@ namespace CSharpImageLibrary
                 if (validMipmap?.Count() != 0)
                 {
                     int index = MipMaps.IndexOf(validMipmap.First());
-                    for (int i = 0; i < index; i++)
-                        MipMaps[i].Data.Dispose();
-
                     MipMaps.RemoveRange(0, index);
                 }
                 else
@@ -356,10 +356,6 @@ namespace CSharpImageLibrary
             MipMap mipmap = MipMaps[0];
             if (MipMaps.Count > 1)
             {
-                foreach (var item in MipMaps)
-                    if (item != mipmap)
-                        item.Data.Dispose();
-
                 MipMaps.Clear();
                 MipMaps.Add(mipmap);
             }
@@ -380,9 +376,6 @@ namespace CSharpImageLibrary
             MemoryStream ms = UsefulThings.RecyclableMemoryManager.GetStream();
             Save(mipmaps, ImageEngineFormat.JPG, ms, false);
 
-            foreach (var mip in mipmaps)
-                mip.Data.Dispose();
-
             return ms;
         }
 
@@ -402,9 +395,6 @@ namespace CSharpImageLibrary
             bool success = false;
             using (FileStream fs = new FileStream(destination, FileMode.Create))
                 success = Save(mipmaps, ImageEngineFormat.JPG, fs, false);
-
-            foreach (var mip in mipmaps)
-                mip.Data.Dispose();
 
             return success;
         }

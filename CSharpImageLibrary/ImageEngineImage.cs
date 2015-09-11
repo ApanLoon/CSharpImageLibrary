@@ -203,7 +203,7 @@ namespace CSharpImageLibrary
             encoder.QualityLevel = 100;
 
             // KFreon: NOTE: Seems to ignore alpha - pretty much ultra useful since premultiplying alpha often removes most of the image
-            byte[] data = MipMaps[0].Data.ToArray();
+            byte[] data = MipMaps[0].Data;
 
             int stride = 4 * (int)Width;
             BitmapPalette palette = BitmapPalettes.Halftone256;
@@ -211,28 +211,17 @@ namespace CSharpImageLibrary
 
             // KFreon: Create a bitmap from raw pixel data
             BitmapSource source = BitmapFrame.Create((int)Width, (int)Height, 96, 96, pixelformat, palette, data, stride);
-
-            /*BitmapFrame frame = BitmapFrame.Create(source);
-            encoder.Frames.Add(frame);
-
-            MemoryStream stream = UsefulThings.RecyclableMemoryManager.GetStream(data.Length);
-            encoder.Save(stream);
-
-            return UsefulThings.WPF.Images.CreateWPFBitmap(stream);*/
             return source;
         }
 
 
         /// <summary>
-        /// Releases resources used by mipmap MemoryStreams.
+        /// DOESN'T DO ANYTHING ATM
         /// </summary>
         public void Dispose()
         {
             if (MipMaps == null)
                 return;
-
-            foreach (MipMap mipmap in MipMaps)
-                mipmap.Data.Dispose();
         }
 
 
@@ -260,7 +249,7 @@ namespace CSharpImageLibrary
             
 
 
-            return UsefulThings.WinForms.Misc.CreateBitmap(mip.Data.ToArray(), mip.Width, mip.Height);
+            return UsefulThings.WinForms.Misc.CreateBitmap(mip.Data, mip.Width, mip.Height);
         }
 
 
@@ -289,7 +278,7 @@ namespace CSharpImageLibrary
             }
             
 
-            BitmapFrame frame = BitmapFrame.Create(BitmapFrame.Create(mip.Width, mip.Height, 96, 96, PixelFormats.Bgra32, BitmapPalettes.Halftone256Transparent, mip.Data.ToArray(), stride));
+            BitmapFrame frame = BitmapFrame.Create(BitmapFrame.Create(mip.Width, mip.Height, 96, 96, PixelFormats.Bgra32, BitmapPalettes.Halftone256Transparent, mip.Data, stride));
             return frame;
         }
     }

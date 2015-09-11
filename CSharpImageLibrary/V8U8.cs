@@ -55,15 +55,10 @@ namespace CSharpImageLibrary
         /// <returns>True if success.</returns>
         internal static bool Save(List<MipMap> MipMaps, Stream destination)
         {
-            Action<BinaryWriter, Stream, int, int> PixelWriter = (writer, pixels, unused, unused2) =>
+            Action<BinaryWriter, byte[], int, int, int> PixelWriter = (writer, pixels, position, unused, unused2) =>
             {
                 // BGRA
-                pixels.Position++; // No blue
-                /*byte[] colours = new byte[2];
-                pixels.Read(colours, 0, 2);
-                writer.Write(colours);*/
-                writer.Write(pixels.ReadBytesFromStream(2));
-                pixels.Position++;    // No alpha
+                writer.Write(pixels.GetRange(position, 2));
             };
 
             var header = DDSGeneral.Build_DDS_Header(MipMaps.Count, MipMaps[0].Height, MipMaps[0].Width, ImageEngineFormat.DDS_V8U8);

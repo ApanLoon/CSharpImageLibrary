@@ -79,7 +79,7 @@ namespace CSharpImageLibrary
 
                     int width = 0;
                     int height = 0;
-                    MemoryStream data = LoadMipMap(mipmap, out width, out height);
+                    byte[] data = LoadMipMap(mipmap, out width, out height);
                     mipmaps.Add(new MipMap(data, width, height));
                 }
 
@@ -88,7 +88,7 @@ namespace CSharpImageLibrary
                     // KFreon: No mips, so resize largest
                     int width = 0;
                     int height = 0;
-                    MemoryStream data = LoadMipMap(decoder.Frames[0], out width, out height);
+                    byte[] data = LoadMipMap(decoder.Frames[0], out width, out height);
                     var mip = new MipMap(data, width, height);
                     double scale = decodeHeight != 0 ? decodeHeight * 1f / height: (decodeWidth != 0 ? decodeWidth * 1f / width : 0);
                     if (scale == 0)
@@ -107,7 +107,7 @@ namespace CSharpImageLibrary
 
                 int width = 0;
                 int height = 0;
-                MemoryStream mipmap = LoadMipMap(bmp, out width, out height);
+                byte[] mipmap = LoadMipMap(bmp, out width, out height);
                 mipmaps.Add(new MipMap(mipmap, width, height));
             }
 
@@ -214,11 +214,11 @@ namespace CSharpImageLibrary
         /// <param name="Height">MipMap height</param>
         /// <param name="Width">MipMap Width.</param>
         /// <returns>BGRA pixel data as stream.</returns>
-        private static MemoryStream LoadMipMap(BitmapSource bmp, out int Width, out int Height)
+        private static byte[] LoadMipMap(BitmapSource bmp, out int Width, out int Height)
         {
             Width = (int)Math.Round(bmp.Width);
             Height = (int)Math.Round(bmp.Height);
-            return bmp.GetPixelsAsStream(Width, Height);
+            return bmp.GetPixels(Width, Height);
         }
 
 
@@ -278,10 +278,10 @@ namespace CSharpImageLibrary
         /// <param name="Width">Width of image.</param>
         /// <param name="Height">Height of image.</param>
         /// <returns>True on success.</returns>
-        internal static bool SaveWithCodecs(MemoryStream pixels, Stream destination, ImageEngineFormat format, int Width, int Height)
+        internal static bool SaveWithCodecs(byte[] pixels, Stream destination, ImageEngineFormat format, int Width, int Height)
         {
             int stride = 4 * Width;
-            BitmapFrame frame = BitmapFrame.Create(BitmapFrame.Create(Width, Height, 96, 96, PixelFormats.Bgra32, BitmapPalettes.Halftone256Transparent, pixels.ToArray(), stride));
+            BitmapFrame frame = BitmapFrame.Create(BitmapFrame.Create(Width, Height, 96, 96, PixelFormats.Bgra32, BitmapPalettes.Halftone256Transparent, pixels, stride));
 
             // KFreon: Choose encoder based on desired format.
             BitmapEncoder encoder = null;
@@ -322,7 +322,8 @@ namespace CSharpImageLibrary
             int bmpWidth = (int)bmp.Width;
             int bmpHeight = (int)bmp.Height;
 
-            MemoryStream data = bmp.GetPixelsAsStream(bmpWidth, bmpHeight);
+            
+            byte[] data = bmp.GetPixels(bmpWidth, bmpHeight);
             return new MipMap(data, bmpWidth, bmpHeight);
         }
     }
