@@ -262,7 +262,7 @@ namespace CSharpImageLibrary
         /// <returns>True on success.</returns>
         internal static bool WriteBlockCompressedDDS(List<MipMap> MipMaps, Stream Destination, DDS_HEADER header, Func<byte[], byte[]> CompressBlock)
         {
-            Action<BinaryWriter, Stream, int, int> PixelWriter = (writer, pixels, width, height) =>
+            Action<BinaryWriter, MTStreamThing<byte>, int, int> PixelWriter = (writer, pixels, width, height) =>
             {
                 byte[] texel = DDSGeneral.GetTexel(pixels, width, height);
                 byte[] CompressedBlock = CompressBlock(texel);
@@ -282,7 +282,7 @@ namespace CSharpImageLibrary
         /// <param name="PixelWriter">Function to write pixels. Optionally also compresses blocks before writing.</param>
         /// <param name="isBCd">True = Block Compressed DDS. Performs extra manipulation to get and order Texels.</param>
         /// <returns>True on success.</returns>
-        internal static bool WriteDDS(List<MipMap> MipMaps, Stream Destination, DDS_HEADER header, Action<BinaryWriter, Stream, int, int> PixelWriter, bool isBCd)
+        internal static bool WriteDDS(List<MipMap> MipMaps, Stream Destination, DDS_HEADER header, Action<BinaryWriter, MTStreamThing<byte>, int, int> PixelWriter, bool isBCd)
         {
             try
             {
@@ -291,8 +291,7 @@ namespace CSharpImageLibrary
                     Write_DDS_Header(header, writer);
                     for (int m = 0; m < MipMaps.Count ; m++)
                     {
-                        MemoryStream mipmap = MipMaps[m].Data;
-                        mipmap.Seek(0, SeekOrigin.Begin);
+                        MTStreamThing<byte> mipmap = MipMaps[m].Data;
                         WriteMipMap(mipmap, MipMaps[m].Width, MipMaps[m].Height, PixelWriter, isBCd, writer);
                     }
                 }
@@ -315,22 +314,23 @@ namespace CSharpImageLibrary
         /// <param name="PixelWriter">Function to write pixels with. Also compresses if block compressed texture.</param>
         /// <param name="isBCd">True = Block Compressed DDS.</param>
         /// <param name="writer">Stream to write to.</param>
-        private static void WriteMipMap(Stream pixelData, int Width, int Height, Action<BinaryWriter, Stream, int, int> PixelWriter, bool isBCd, BinaryWriter writer)
+        private static void WriteMipMap(MTStreamThing<byte> pixelData, int Width, int Height, Action<BinaryWriter, MTStreamThing<byte>, int, int> PixelWriter, bool isBCd, BinaryWriter writer)
         {
             int bitsPerScanLine = 4 * Width;  // KFreon: Bits per image line.
 
             // KFreon: Loop over rows and columns, doing extra moving if Block Compressed to accommodate texels.
+            int Position = 0;
             for (int h = 0; h < Height; h += (isBCd ? 4 : 1))
             {
                 for (int w = 0; w < Width; w += (isBCd ? 4 : 1))
                 {
                     PixelWriter(writer, pixelData, Width, Height);
                     if (isBCd && w != Width - 4 && Width > 4 && Height > 4)  // KFreon: Only do this if dimensions are big enough
-                        pixelData.Seek(-(bitsPerScanLine * 4) + 4 * 4, SeekOrigin.Current);  // Not at an row end texel. Moves back up to read next texel in row.
+                        Position += -(bitsPerScanLine * 4) + 4 * 4;  // Not at an row end texel. Moves back up to read next texel in row.
                 }
 
                 if (isBCd && Width > 4 && Height > 4)  // Only do this jump if dimensions allow it
-                    pixelData.Seek(-bitsPerScanLine + 4 * 4, SeekOrigin.Current);  // Row end texel. Just need to add 1.
+                    Position += -bitsPerScanLine + 4 * 4;  // Row end texel. Just need to add 1.
             }
         }
         #endregion Save
@@ -376,7 +376,7 @@ namespace CSharpImageLibrary
                         mipmap[count++] = 0xFF;
                     }
                 }
-                MipMaps.Add(new MipMap(UsefulThings.RecyclableMemoryManager.GetStream(mipmap), newWidth, newHeight));
+                MipMaps.Add(new MipMap(new MTStreamThing<byte>(mipmap), newWidth, newHeight));
 
                 newWidth /= 2;
                 newHeight /= 2;
@@ -407,7 +407,7 @@ namespace CSharpImageLibrary
 
             for (int m = 0; m < estimatedMips; m++)
             {
-                MemoryStream mipmap = UsefulThings.RecyclableMemoryManager.GetStream(4 * (int)mipWidth * (int)mipHeight);
+                MTStreamThing<byte> mipmap = new MTStreamThing<byte>(4 * (int)mipWidth * (int)mipHeight);
 
                 // Loop over rows and columns NOT pixels
                 int compressedLineSize = format.BlockSize * mipWidth / 4;
@@ -416,23 +416,19 @@ namespace CSharpImageLibrary
                 po.MaxDegreeOfParallelism = -1;
                 int texelCount = mipHeight / 4;
                 if (texelCount == 0)
-                    mipmap.Write(new byte[mipWidth * mipHeight * 4], 0, mipWidth * mipHeight * 4);
+                    mipmap.Write(new byte[mipWidth * mipHeight * 4]);
                 else
                 {
                     Parallel.For(0, texelCount, po, (rowr, loopstate) =>
                     {
                         int row = rowr;
-                        using (MemoryStream DecompressedLine = ReadBCMipLine(compressed, mipHeight, mipWidth, bitsPerScanline, mipOffset, compressedLineSize, row, DecompressBlock))
-                        {
-                            if (DecompressedLine != null)
-                                lock (mipmap)
-                                {
-                                    mipmap.Position = rowr * bitsPerScanline * 4;
-                                    DecompressedLine.WriteTo(mipmap);
-                                }
-                            else
-                                loopstate.Break();
-                        }
+                        int Position = rowr * bitsPerScanline * 4;
+                        MTStreamThing<byte> DecompressedLine = ReadBCMipLine(compressed, mipHeight, mipWidth, bitsPerScanline, mipOffset, compressedLineSize, row, DecompressBlock);
+                        if (DecompressedLine != null)
+                            mipmap.Write(DecompressedLine);
+                        else
+                            loopstate.Break();
+                        
                     });
                 }
 
@@ -449,14 +445,14 @@ namespace CSharpImageLibrary
             return MipMaps;
         }
 
-        private static MemoryStream ReadBCMipLine(Stream compressed, int mipHeight, int mipWidth, int bitsPerScanLine, long mipOffset, int compressedLineSize, int rowIndex, Func<Stream, List<byte[]>> DecompressBlock)
+        private static MTStreamThing<byte> ReadBCMipLine(Stream compressed, int mipHeight, int mipWidth, int bitsPerScanLine, long mipOffset, int compressedLineSize, int rowIndex, Func<Stream, List<byte[]>> DecompressBlock)
         {
             int bitsPerPixel = 4;
 
-            MemoryStream DecompressedLine = UsefulThings.RecyclableMemoryManager.GetStream(bitsPerScanLine * 4);
+            MTStreamThing<byte> DecompressedLine = new MTStreamThing<byte>(bitsPerScanLine * 4);
 
             // KFreon: Read compressed line into new stream for multithreading purposes
-            MemoryStream CompressedLine = UsefulThings.RecyclableMemoryManager.GetStream(compressedLineSize);
+            MTStreamThing<byte> CompressedLine = new MTStreamThing<byte>(compressedLineSize);
             lock (compressed)
             {
                 // KFreon: Seek to correct texel
@@ -467,11 +463,14 @@ namespace CSharpImageLibrary
                     return null;
 
                 // KFreon: Read compressed line
-                CompressedLine.ReadFrom(compressed, compressedLineSize);
+                byte[] buffer = new byte[compressedLineSize];
+
+                compressed.Read(buffer, 0, compressedLineSize);
+                CompressedLine.Write(buffer);
             }
-            CompressedLine.Position = 0;
 
             // KFreon: Read texels in row
+            int Position = 0;
             for (int column = 0; column < mipWidth; column += 4)
             {
                 // decompress 
@@ -484,7 +483,7 @@ namespace CSharpImageLibrary
 
                 // Write texel
                 int TopLeft = column * bitsPerPixel;// + rowIndex * 4 * bitsPerScanLine;  // Top left corner of texel IN BYTES (i.e. expanded pixels to 4 channels)
-                DecompressedLine.Seek(TopLeft, SeekOrigin.Begin);
+                Position = TopLeft;
                 byte[] block = new byte[16];
                 for (int i = 0; i < 16; i += 4)
                 {
@@ -496,7 +495,7 @@ namespace CSharpImageLibrary
                         block[j + 2] = red[i + (j >> 2)];
                         block[j + 3] = alpha[i + (j >> 2)];
                     }
-                    DecompressedLine.Write(block, 0, 16);
+                    DecompressedLine.Write(block, Position);
 
                     // Go one line of pixels down (bitsPerScanLine), then to the left side of the texel (4 pixels back from where it finished)
                     DecompressedLine.Seek(bitsPerScanLine - bitsPerPixel * 4, SeekOrigin.Current);
@@ -745,7 +744,7 @@ namespace CSharpImageLibrary
         /// <param name="Width">Width of image.</param>
         /// <param name="Height">Height of image.</param>
         /// <returns>4x4 texel.</returns>
-        internal static byte[] GetTexel(Stream pixelData, int Width, int Height)
+        internal static byte[] GetTexel(MTStreamThing<byte> pixelData, int Width, int Height)
         {
             byte[] texel = new byte[16 * 4]; // 16 pixels, 4 bytes per pixel
 
@@ -756,7 +755,10 @@ namespace CSharpImageLibrary
                 for (int h = 0; h < Height; h++)
                     for (int w = 0; w < Width; w++)
                         for (int i = 0; i < 4; i++)
-                            texel[count++] = (byte)pixelData.ReadByte();
+                        {
+                            texel[count] = pixelData.Read(count);
+                            count++;
+                        }
 
                 return texel;
             }
@@ -765,12 +767,12 @@ namespace CSharpImageLibrary
             int bitsPerScanLine = 4 * Width;
             for (int i = 0; i < 64; i += 16)  // pixel rows
             {
-                pixelData.Read(texel, i, 16);
+                texel = pixelData.Read(i, 16).ToArray(16);
                 /*for (int j = 0; j < 16; j += 4)  // pixels in row
                     for (int k = 0; k < 4; k++) // BGRA
                         texel[i + j + k] = (byte)pixelData.ReadByte();*/
 
-                pixelData.Seek(bitsPerScanLine - 4 * 4, SeekOrigin.Current);  // Seek to next line of texel
+                count+= bitsPerScanLine - 4 * 4;  // Seek to next line of texel
             }
                 
 

@@ -51,7 +51,7 @@ namespace CSharpImageLibrary
 
                 // KFreon: Uncompressed, so can just read from stream.
                 int mipLength = newWidth * newHeight * 4;
-                MemoryStream mipmap = UsefulThings.RecyclableMemoryManager.GetStream(mipLength);
+                MTStreamThing<byte> mipmap = new MTStreamThing<byte>(mipLength);
                 int numRead = mipmap.ReadFrom(stream, mipLength);
                 if (numRead == 0)
                     throw new InvalidDataException($"Data not found for mipmap number {m}");

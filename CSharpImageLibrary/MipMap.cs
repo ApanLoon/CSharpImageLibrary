@@ -17,7 +17,7 @@ namespace CSharpImageLibrary
         /// <summary>
         /// Pixels as stream.
         /// </summary>
-        public MemoryStream Data { get; set; }
+        public MTStreamThing<byte> Data { get; set; }
 
         /// <summary>
         /// Mipmap width.
@@ -36,7 +36,7 @@ namespace CSharpImageLibrary
         /// <param name="data">Raw pixels.</param>
         /// <param name="width">Mipmap width.</param>
         /// <param name="height">Mipmap height.</param>
-        public MipMap(MemoryStream data, int width, int height)
+        public MipMap(MTStreamThing<byte> data, int width, int height)
         {
             Data = data;
             Width = UsefulThings.General.RoundToNearestPowerOfTwo(width);
