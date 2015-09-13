@@ -195,11 +195,11 @@ namespace CSharpImageLibrary
                 // Get top mip and clear others.
                 var mip = MipMaps[0];
                 MipMaps.Clear();
-                MTStreamThing<byte> output = null;
+                MTStreamThing output = null;
 
                 if (WindowsWICCodecsAvailable)
                 {
-                    output = new MTStreamThing<byte>((int)mip.Data.Length);
+                    output = new MTStreamThing((int)mip.Data.Length);
                     int stride = 4 * mip.Width;
                     JpegBitmapEncoder encoder = new JpegBitmapEncoder();
                     BitmapFrame frame = BitmapFrame.Create(BitmapFrame.Create(mip.Width, mip.Height, 96, 96, PixelFormats.Bgra32, BitmapPalettes.Halftone256Transparent, mip.Data.ToArray(), stride));
@@ -214,7 +214,7 @@ namespace CSharpImageLibrary
                     Marshal.Copy(data.Scan0, pixels, 0, (int)mip.Data.Length);
                     bmp.UnlockBits(data);
 
-                    output = new MTStreamThing<byte>(pixels);
+                    output = new MTStreamThing(pixels);
                 }
                 MipMap newmip = new MipMap(output, mip.Width, mip.Height);
 
@@ -357,12 +357,12 @@ namespace CSharpImageLibrary
         /// </summary>
         /// <param name="stream">Full image stream.</param>
         /// <param name="maxDimension">Maximum value for either image dimension.</param>
-        public static MTStreamThing<byte> GenerateThumbnailToStream(Stream stream, int maxDimension)
+        public static MTStreamThing GenerateThumbnailToStream(Stream stream, int maxDimension)
         {
             Format format = new Format();
             var mipmaps = LoadImage(stream, out format, null, maxDimension);
 
-            MTStreamThing<byte> ms = new MTStreamThing<byte>();
+            MTStreamThing ms = new MTStreamThing();
             Save(mipmaps, ImageEngineFormat.JPG, ms, false);
 
             foreach (var mip in mipmaps)

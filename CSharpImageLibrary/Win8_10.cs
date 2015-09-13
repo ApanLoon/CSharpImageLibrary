@@ -79,7 +79,7 @@ namespace CSharpImageLibrary
 
                     int width = 0;
                     int height = 0;
-                    MTStreamThing<byte> data = LoadMipMap(mipmap, out width, out height);
+                    MTStreamThing data = LoadMipMap(mipmap, out width, out height);
                     mipmaps.Add(new MipMap(data, width, height));
                 }
 
@@ -88,7 +88,7 @@ namespace CSharpImageLibrary
                     // KFreon: No mips, so resize largest
                     int width = 0;
                     int height = 0;
-                    MTStreamThing<byte> data = LoadMipMap(decoder.Frames[0], out width, out height);
+                    MTStreamThing data = LoadMipMap(decoder.Frames[0], out width, out height);
                     var mip = new MipMap(data, width, height);
                     double scale = decodeHeight != 0 ? decodeHeight * 1f / height: (decodeWidth != 0 ? decodeWidth * 1f / width : 0);
                     if (scale == 0)
@@ -107,7 +107,7 @@ namespace CSharpImageLibrary
 
                 int width = 0;
                 int height = 0;
-                MTStreamThing<byte> mipmap = LoadMipMap(bmp, out width, out height);
+                MTStreamThing mipmap = LoadMipMap(bmp, out width, out height);
                 mipmaps.Add(new MipMap(mipmap, width, height));
             }
 
@@ -214,7 +214,7 @@ namespace CSharpImageLibrary
         /// <param name="Height">MipMap height</param>
         /// <param name="Width">MipMap Width.</param>
         /// <returns>BGRA pixel data as stream.</returns>
-        private static MTStreamThing<byte> LoadMipMap(BitmapSource bmp, out int Width, out int Height)
+        private static MTStreamThing LoadMipMap(BitmapSource bmp, out int Width, out int Height)
         {
             Width = (int)Math.Round(bmp.Width);
             Height = (int)Math.Round(bmp.Height);
@@ -278,7 +278,7 @@ namespace CSharpImageLibrary
         /// <param name="Width">Width of image.</param>
         /// <param name="Height">Height of image.</param>
         /// <returns>True on success.</returns>
-        internal static bool SaveWithCodecs(MTStreamThing<byte> pixels, Stream destination, ImageEngineFormat format, int Width, int Height)
+        internal static bool SaveWithCodecs(MTStreamThing pixels, Stream destination, ImageEngineFormat format, int Width, int Height)
         {
             int stride = 4 * Width;
             BitmapFrame frame = BitmapFrame.Create(BitmapFrame.Create(Width, Height, 96, 96, PixelFormats.Bgra32, BitmapPalettes.Halftone256Transparent, pixels.ToArray(), stride));
@@ -309,7 +309,7 @@ namespace CSharpImageLibrary
         internal static MipMap Resize(MipMap mipMap, double scale)
         {
             BitmapImage bmp = null;
-            using (MTStreamThing<byte> ms = new MTStreamThing<byte>())
+            using (MTStreamThing ms = new MTStreamThing())
             {
                 if (!SaveWithCodecs(mipMap.Data, ms, ImageEngineFormat.PNG, mipMap.Width, mipMap.Height))
                     return null;
@@ -322,7 +322,7 @@ namespace CSharpImageLibrary
             int bmpWidth = (int)bmp.Width;
             int bmpHeight = (int)bmp.Height;
 
-            MTStreamThing<byte> data = bmp.GetPixelsAsStream(bmpWidth, bmpHeight);
+            MTStreamThing data = bmp.GetPixelsAsStream(bmpWidth, bmpHeight);
             return new MipMap(data, bmpWidth, bmpHeight);
         }
     }

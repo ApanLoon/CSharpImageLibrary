@@ -30,7 +30,7 @@ namespace CSharpImageLibrary
         /// </summary>
         /// <param name="compressed">Stream containing entire image. NOT just pixels.</param>
         /// <returns>16 byte BGRA channels as stream.</returns>
-        internal static List<MipMap> Load(Stream compressed)
+        internal static List<MipMap> Load(MTStreamThing compressed)
         {
             return DDSGeneral.LoadBlockCompressedTexture(compressed, DecompressBC1Block);
         }
@@ -41,9 +41,9 @@ namespace CSharpImageLibrary
         /// </summary>
         /// <param name="compressed">BC1 compressed stream.</param>
         /// <returns>BGRA channels.</returns>
-        private static List<byte[]> DecompressBC1Block(Stream compressed)
+        private static List<byte[]> DecompressBC1Block(MTStreamThing compressed, int Position)
         {
-            return DDSGeneral.DecompressRGBBlock(compressed, true);
+            return DDSGeneral.DecompressRGBBlock(compressed, Position, true);
         }
 
 

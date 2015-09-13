@@ -206,7 +206,7 @@ namespace CSharpImageLibrary
 
             SavePreview = await Task.Run(() =>
             {
-                using (MTStreamThing<byte> stream = new MTStreamThing<byte>())
+                using (MTStreamThing stream = new MTStreamThing())
                 {
                     img.Save(stream, SaveFormat, false);
                     using (ImageEngineImage previewimage = new ImageEngineImage(stream))

@@ -46,6 +46,31 @@ namespace CSharpImageLibrary
             h.dwReserved2 = r.ReadInt32();
         }
 
+
+        /// <summary>
+        /// Reads DDS header from file.
+        /// </summary>
+        /// <param name="h">Header struct.</param>
+        /// <param name="r">File reader.</param>
+        internal static void Read_DDS_HEADER(DDS_HEADER h, MTStreamThing r, int Position)
+        {
+            h.dwSize = (int)r.ReadInt32(Position++);
+            h.dwFlags = (int)r.ReadInt32(Position++);
+            h.dwHeight = (int)r.ReadInt32(Position++);
+            h.dwWidth = (int)r.ReadInt32(Position++);
+            h.dwPitchOrLinearSize = (int)r.ReadInt32(Position++);
+            h.dwDepth = (int)r.ReadInt32(Position++);
+            h.dwMipMapCount = (int)r.ReadInt32(Position++);
+            for (int i = 0; i < 11; ++i)
+                h.dwReserved1[i] = (int)r.ReadInt32(Position++);
+            Read_DDS_PIXELFORMAT(h.ddspf, r);
+            h.dwCaps = (int)r.ReadInt32(Position++);
+            h.dwCaps2 = (int)r.ReadInt32(Position++);
+            h.dwCaps3 = (int)r.ReadInt32(Position++);
+            h.dwCaps4 = (int)r.ReadInt32(Position++);
+            h.dwReserved2 = (int)r.ReadInt32(Position++);
+        }
+
         /// <summary>
         /// Reads DDS pixel format.
         /// </summary>
@@ -262,7 +287,7 @@ namespace CSharpImageLibrary
         /// <returns>True on success.</returns>
         internal static bool WriteBlockCompressedDDS(List<MipMap> MipMaps, Stream Destination, DDS_HEADER header, Func<byte[], byte[]> CompressBlock)
         {
-            Action<BinaryWriter, MTStreamThing<byte>, int, int> PixelWriter = (writer, pixels, width, height) =>
+            Action<BinaryWriter, MTStreamThing, int, int> PixelWriter = (writer, pixels, width, height) =>
             {
                 byte[] texel = DDSGeneral.GetTexel(pixels, width, height);
                 byte[] CompressedBlock = CompressBlock(texel);
@@ -282,7 +307,7 @@ namespace CSharpImageLibrary
         /// <param name="PixelWriter">Function to write pixels. Optionally also compresses blocks before writing.</param>
         /// <param name="isBCd">True = Block Compressed DDS. Performs extra manipulation to get and order Texels.</param>
         /// <returns>True on success.</returns>
-        internal static bool WriteDDS(List<MipMap> MipMaps, Stream Destination, DDS_HEADER header, Action<BinaryWriter, MTStreamThing<byte>, int, int> PixelWriter, bool isBCd)
+        internal static bool WriteDDS(List<MipMap> MipMaps, Stream Destination, DDS_HEADER header, Action<BinaryWriter, MTStreamThing, int, int> PixelWriter, bool isBCd)
         {
             try
             {
@@ -291,7 +316,7 @@ namespace CSharpImageLibrary
                     Write_DDS_Header(header, writer);
                     for (int m = 0; m < MipMaps.Count ; m++)
                     {
-                        MTStreamThing<byte> mipmap = MipMaps[m].Data;
+                        MTStreamThing mipmap = MipMaps[m].Data;
                         WriteMipMap(mipmap, MipMaps[m].Width, MipMaps[m].Height, PixelWriter, isBCd, writer);
                     }
                 }
@@ -314,7 +339,7 @@ namespace CSharpImageLibrary
         /// <param name="PixelWriter">Function to write pixels with. Also compresses if block compressed texture.</param>
         /// <param name="isBCd">True = Block Compressed DDS.</param>
         /// <param name="writer">Stream to write to.</param>
-        private static void WriteMipMap(MTStreamThing<byte> pixelData, int Width, int Height, Action<BinaryWriter, MTStreamThing<byte>, int, int> PixelWriter, bool isBCd, BinaryWriter writer)
+        private static void WriteMipMap(MTStreamThing pixelData, int Width, int Height, Action<BinaryWriter, MTStreamThing, int, int> PixelWriter, bool isBCd, BinaryWriter writer)
         {
             int bitsPerScanLine = 4 * Width;  // KFreon: Bits per image line.
 
@@ -343,7 +368,7 @@ namespace CSharpImageLibrary
         /// <param name="stream">Stream containing entire image. NOT just pixels.</param>
         /// <param name="PixelReader">Function that knows how to read a pixel. Different for each format (V8U8, BGRA)</param>
         /// <returns></returns>
-        internal static List<MipMap> LoadUncompressed(Stream stream, Func<Stream, List<byte>> PixelReader)
+        internal static List<MipMap> LoadUncompressed(MTStreamThing stream, Func<MTStreamThing, List<byte>> PixelReader)
         {
             // KFreon: Necessary to move stream position along to pixel data.
             DDS_HEADER header = null;
@@ -359,10 +384,6 @@ namespace CSharpImageLibrary
 
             for (int m = 0; m < estimatedMips; m++)
             {
-                // KFreon: Since mip count is an estimate, check if there are any mips left to read.
-                if (stream.Position >= stream.Length)
-                    break;
-
                 int count = 0;
                 byte[] mipmap = new byte[newHeight * newWidth * 4];
                 for (int y = 0; y < newHeight; y++)
@@ -376,7 +397,7 @@ namespace CSharpImageLibrary
                         mipmap[count++] = 0xFF;
                     }
                 }
-                MipMaps.Add(new MipMap(new MTStreamThing<byte>(mipmap), newWidth, newHeight));
+                MipMaps.Add(new MipMap(new MTStreamThing(mipmap), newWidth, newHeight));
 
                 newWidth /= 2;
                 newHeight /= 2;
@@ -392,7 +413,7 @@ namespace CSharpImageLibrary
         /// <param name="compressed">Compressed image data.</param>
         /// <param name="DecompressBlock">Format specific block decompressor.</param>
         /// <returns>16 pixel BGRA channels.</returns>
-        internal static List<MipMap> LoadBlockCompressedTexture(Stream compressed, Func<Stream, List<byte[]>> DecompressBlock)
+        internal static List<MipMap> LoadBlockCompressedTexture(MTStreamThing compressed, Func<MTStreamThing, List<byte[]>> DecompressBlock)
         {
             DDS_HEADER header;
             Format format = ImageFormats.ParseDDSFormat(compressed, out header);
@@ -407,7 +428,7 @@ namespace CSharpImageLibrary
 
             for (int m = 0; m < estimatedMips; m++)
             {
-                MTStreamThing<byte> mipmap = new MTStreamThing<byte>(4 * (int)mipWidth * (int)mipHeight);
+                MTStreamThing mipmap = new MTStreamThing(4 * (int)mipWidth * (int)mipHeight);
 
                 // Loop over rows and columns NOT pixels
                 int compressedLineSize = format.BlockSize * mipWidth / 4;
@@ -423,7 +444,7 @@ namespace CSharpImageLibrary
                     {
                         int row = rowr;
                         int Position = rowr * bitsPerScanline * 4;
-                        MTStreamThing<byte> DecompressedLine = ReadBCMipLine(compressed, mipHeight, mipWidth, bitsPerScanline, mipOffset, compressedLineSize, row, DecompressBlock);
+                        MTStreamThing DecompressedLine = ReadBCMipLine(compressed, mipHeight, mipWidth, bitsPerScanline, mipOffset, compressedLineSize, row, DecompressBlock);
                         if (DecompressedLine != null)
                             mipmap.Write(DecompressedLine);
                         else
@@ -445,29 +466,24 @@ namespace CSharpImageLibrary
             return MipMaps;
         }
 
-        private static MTStreamThing<byte> ReadBCMipLine(Stream compressed, int mipHeight, int mipWidth, int bitsPerScanLine, long mipOffset, int compressedLineSize, int rowIndex, Func<Stream, List<byte[]>> DecompressBlock)
+        private static MTStreamThing ReadBCMipLine(MTStreamThing compressed, int mipHeight, int mipWidth, int bitsPerScanLine, long mipOffset, int compressedLineSize, int rowIndex, Func<MTStreamThing, List<byte[]>> DecompressBlock)
         {
             int bitsPerPixel = 4;
 
-            MTStreamThing<byte> DecompressedLine = new MTStreamThing<byte>(bitsPerScanLine * 4);
+            MTStreamThing DecompressedLine = new MTStreamThing(bitsPerScanLine * 4);
 
             // KFreon: Read compressed line into new stream for multithreading purposes
-            MTStreamThing<byte> CompressedLine = new MTStreamThing<byte>(compressedLineSize);
-            lock (compressed)
-            {
-                // KFreon: Seek to correct texel
-                compressed.Position = mipOffset + rowIndex * compressedLineSize;  // +128 = header size
+            MTStreamThing CompressedLine = new MTStreamThing(compressedLineSize);
 
-                // KFreon: since mip count is an estimate, check to see if there are any mips left to read.
-                if (compressed.Position >= compressed.Length)
-                    return null;
+            // KFreon: Seek to correct texel
+            int Position = (int)(mipOffset + rowIndex * compressedLineSize);
 
-                // KFreon: Read compressed line
-                byte[] buffer = new byte[compressedLineSize];
+            // KFreon: Read compressed line
+            byte[] buffer = new byte[compressedLineSize];
 
-                compressed.Read(buffer, 0, compressedLineSize);
-                CompressedLine.Write(buffer);
-            }
+            compressed.Read(buffer);
+            CompressedLine.Write(buffer);
+
 
             // KFreon: Read texels in row
             int Position = 0;
@@ -498,7 +514,7 @@ namespace CSharpImageLibrary
                     DecompressedLine.Write(block, Position);
 
                     // Go one line of pixels down (bitsPerScanLine), then to the left side of the texel (4 pixels back from where it finished)
-                    DecompressedLine.Seek(bitsPerScanLine - bitsPerPixel * 4, SeekOrigin.Current);
+                    Position += bitsPerScanLine - bitsPerPixel * 4;
                 }
             }
             return DecompressedLine;
@@ -544,24 +560,18 @@ namespace CSharpImageLibrary
         /// <param name="compressed">Compressed image data.</param>
         /// <param name="isDXT1">True = DXT1, otherwise false.</param>
         /// <returns>16 pixel BGRA channels.</returns>
-        internal static List<byte[]> DecompressRGBBlock(Stream compressed, bool isDXT1)
+        internal static List<byte[]> DecompressRGBBlock(MTStreamThing compressed, int Position, bool isDXT1)
         {
             int[] DecompressedBlock = new int[16];
+            
+            // Read min max colours
+            ushort min = compressed.ReadUInt16(Position);
+            ushort max = compressed.ReadUInt16(Position);
+            int[]Colours = BuildRGBPalette(min, max, isDXT1);
 
-            ushort min;
-            ushort max;
-            byte[] pixels;
-            int[] Colours;
-            using (BinaryReader reader = new BinaryReader(compressed, Encoding.Default, true))
-            {
-                // Read min max colours
-                min = (ushort)reader.ReadInt16();
-                max = (ushort)reader.ReadInt16();
-                Colours = BuildRGBPalette(min, max, isDXT1);
-
-                // Decompress pixels
-                pixels = reader.ReadBytes(4);
-            }
+            // Decompress pixels
+            List<byte> pixels = compressed.Read(Position, 4);
+            
 
                 
             for (int i = 0; i < 16; i += 4)
@@ -744,7 +754,7 @@ namespace CSharpImageLibrary
         /// <param name="Width">Width of image.</param>
         /// <param name="Height">Height of image.</param>
         /// <returns>4x4 texel.</returns>
-        internal static byte[] GetTexel(MTStreamThing<byte> pixelData, int Width, int Height)
+        internal static byte[] GetTexel(MTStreamThing pixelData, int Width, int Height)
         {
             byte[] texel = new byte[16 * 4]; // 16 pixels, 4 bytes per pixel
 
