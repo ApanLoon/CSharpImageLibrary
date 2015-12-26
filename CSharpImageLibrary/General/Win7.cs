@@ -135,7 +135,7 @@ namespace CSharpImageLibrary.General
                 newWidth /= 2;
                 newHeight /= 2;
 
-                var mip = Resize(currentMip, newWidth, newHeight);
+                var mip = Resize(currentMip.BaseImage, newWidth, newHeight);
                 newmips[index] = mip;
             });
 
@@ -148,7 +148,7 @@ namespace CSharpImageLibrary.General
         /// Save using Windows 7- GDI+ Codecs to stream.
         /// Only single level images supported.
         /// </summary>
-        /// <param name="pixelsWithMips">BGRA pixels.</param>
+        /// <param name="img">BGRA image source.</param>
         /// <param name="destination">Image stream to save to.</param>
         /// <param name="format">Destination format.</param>
         /// <param name="Width">Width of image.</param>
@@ -181,9 +181,9 @@ namespace CSharpImageLibrary.General
             return true;
         }
 
-        internal static MipMap Resize(MipMap mipMap, int width, int height)
+        internal static MipMap Resize(BitmapSource source, int width, int height)
         {
-            Image bmp = UsefulThings.WinForms.Imaging.CreateBitmap(mipMap.BaseImage, false);
+            Image bmp = UsefulThings.WinForms.Imaging.CreateBitmap(source, false);
             bmp = UsefulThings.WinForms.Imaging.resizeImage(bmp, new Size(width, height));
             
             byte[] data = UsefulThings.WinForms.Imaging.GetPixelDataFromBitmap((Bitmap)bmp);

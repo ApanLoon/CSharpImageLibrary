@@ -138,7 +138,7 @@ namespace CSharpImageLibrary.General
         }
 
 
-        private void LoadFromFile(string imagePath, int desiredMaxDimension = 0, bool enforceResize = true)
+        private void LoadFromFile(string imagePath, int desiredMaxDimension = 0, bool enforceResize = false)
         {
             Format format = new Format();
             FilePath = imagePath;
@@ -152,7 +152,7 @@ namespace CSharpImageLibrary.General
         }
 
         
-        private void LoadFromStream(Stream stream, string extension = null, int desiredMaxDimension = 0, bool enforceResize = true)
+        private void LoadFromStream(Stream stream, string extension = null, int desiredMaxDimension = 0, bool enforceResize = false)
         {
             Format format = new Format();
 
@@ -238,7 +238,6 @@ namespace CSharpImageLibrary.General
         public System.Drawing.Bitmap GetGDIBitmap(bool ignoreAlpha, int maxDimension = 0)
         {
             MipMap mip = MipMaps[0];
-
             if (maxDimension != 0)
             {
                 // Choose a mip of the correct size, if available.
@@ -248,10 +247,12 @@ namespace CSharpImageLibrary.General
                 else
                 {
                     double scale = maxDimension * 1f / (Height > Width ? Height : Width);
-                    mip = ImageEngine.Resize(mip, scale);
+
+                    BitmapSource bmp = new FormatConvertedBitmap(mip.BaseImage, PixelFormats.Bgr32, null, 0);
+                    mip = ImageEngine.Resize(bmp, scale);
                 }
             }
-
+            
             mip.BaseImage.Freeze();
             return UsefulThings.WinForms.Imaging.CreateBitmap(mip.BaseImage, ignoreAlpha);
         }
@@ -261,10 +262,10 @@ namespace CSharpImageLibrary.General
         /// Scales top mipmap and DESTROYS ALL OTHERS.
         /// </summary>
         /// <param name="DesiredDimension">Desired size of image.</param>
-        public void Resize(int DesiredDimension)
+        public void Resize(int DesiredDimension, bool ignoresAlpha)
         {
             double scale = (double)DesiredDimension / (double)MipMaps[0].Width;  // TODO Do height too?
-            Resize(scale);
+            Resize(scale, ignoresAlpha);
         }
 
 
@@ -272,9 +273,13 @@ namespace CSharpImageLibrary.General
         /// Scales top mipmap and DESTROYS ALL OTHERS.
         /// </summary>
         /// <param name="scale">Scaling factor. </param>
-        public void Resize(double scale)
+        public void Resize(double scale, bool ignoresAlpha)
         {
-            MipMaps[0] = ImageEngine.Resize(MipMaps[0], scale);
+            BitmapSource bmp = MipMaps[0].BaseImage;
+            if (ignoresAlpha)
+                bmp = new FormatConvertedBitmap(bmp, PixelFormats.Bgr32, null, 0);
+
+            MipMaps[0] = ImageEngine.Resize(bmp, scale);
             MipMaps.RemoveRange(1, NumMipMaps - 1);
         }
 
@@ -296,7 +301,7 @@ namespace CSharpImageLibrary.General
                 else
                 {
                     double scale = maxDimension * 1f / (Height > Width ? Height : Width);
-                    mip = ImageEngine.Resize(mip, scale);
+                    mip = ImageEngine.Resize(new FormatConvertedBitmap(mip.BaseImage, PixelFormats.Bgr32, null, 0), scale);
                 }
             }
             

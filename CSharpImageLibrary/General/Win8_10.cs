@@ -56,7 +56,7 @@ namespace CSharpImageLibrary.General
         /// <param name="decodeHeight">Height to decode as. Aspect ratio unchanged if decodeWidth = 0.</param>
         /// <param name="isDDS">True = image is a DDS.</param>
         /// <returns>BGRA Pixel Data as stream.</returns>
-        internal static List<MipMap> LoadWithCodecs(Stream stream, int decodeWidth, int decodeHeight, bool isDDS)
+        internal static List<MipMap> LoadWithCodecs(Stream stream, int decodeWidth, int decodeHeight, bool isDDS, bool ignoresAlpha)
         {
             if (!WindowsCodecsAvailable)
                 return null;
@@ -91,7 +91,11 @@ namespace CSharpImageLibrary.General
 
                     double scale = hScale < wScale ? hScale : wScale;
 
-                    mip = Resize(mip, scale);
+                    BitmapSource bmp = mip.BaseImage;
+                    if (ignoresAlpha)
+                        bmp = new FormatConvertedBitmap(bmp, PixelFormats.Bgr32, null, 0);
+
+                    mip = Resize(bmp, scale);
                     mipmaps.Add(mip);
                 }
             }
@@ -209,13 +213,13 @@ namespace CSharpImageLibrary.General
         /// <param name="decodeHeight">Height to decode to. Aspect unchanged if decodeWidth = 0.</param>
         /// <param name="isDDS">True = Image is a DDS.</param>
         /// <returns>BGRA Pixel Data as stream.</returns>
-        internal static List<MipMap> LoadWithCodecs(string imageFile, int decodeWidth, int decodeHeight, bool isDDS)
+        internal static List<MipMap> LoadWithCodecs(string imageFile, int decodeWidth, int decodeHeight, bool isDDS, bool ignoresAlpha)
         {
             if (!WindowsCodecsAvailable)
                 return null;
 
             using (FileStream fs = new FileStream(imageFile, FileMode.Open, FileAccess.Read, FileShare.Read))
-                return LoadWithCodecs(fs, decodeWidth, decodeHeight, isDDS);
+                return LoadWithCodecs(fs, decodeWidth, decodeHeight, isDDS, ignoresAlpha);
         }
         #endregion Loading
 
@@ -225,7 +229,7 @@ namespace CSharpImageLibrary.General
         /// </summary>
         /// <param name="MipMaps">MipMaps to check.</param>
         /// <returns>Number of mipmaps present in MipMaps.</returns>
-        internal static int BuildMipMaps(List<MipMap> MipMaps)
+        internal static int BuildMipMaps(List<MipMap> MipMaps, bool ignoresAlpha)
         {
             if (MipMaps?.Count == 0)
                 return 0;
@@ -243,14 +247,19 @@ namespace CSharpImageLibrary.General
             Parallel.For(1, estimatedMips, item =>   // Starts at 1 to skip top mip
             {
                 int index = item;
-                MipMap newmip = Resize(currentMip, 1f / Math.Pow(2, index));
+                BitmapSource img;
+                if (ignoresAlpha)
+                    img = new FormatConvertedBitmap(currentMip.BaseImage, PixelFormats.Bgr32, null, 0);
+                else
+                    img = currentMip.BaseImage;
+
+                MipMap newmip = Resize(img, 1f / Math.Pow(2, index));
                 newmips[index - 1] = newmip;
             });
             MipMaps.AddRange(newmips);
 
             return estimatedMips;
         }
-
 
         /// <summary>
         /// Saves image using internal Codecs - DDS and mippables not supported.
@@ -272,6 +281,7 @@ namespace CSharpImageLibrary.General
                     break;
                 case ImageEngineFormat.JPG:
                     encoder = new JpegBitmapEncoder();
+                    
                     ((JpegBitmapEncoder)encoder).QualityLevel = 90;
                     break;
                 case ImageEngineFormat.PNG:
@@ -286,11 +296,10 @@ namespace CSharpImageLibrary.General
             return true;
         }
 
-        internal static MipMap Resize(MipMap mipMap, double scale)
+        internal static MipMap Resize(BitmapSource bmp, double scale)
         {
-            BitmapSource bmp = mipMap.BaseImage;
-            bmp = UsefulThings.WPF.Images.ScaleImage(bmp, scale);
-            return new MipMap(bmp);
+            var newbmp = UsefulThings.WPF.Images.ScaleImage(bmp, scale);
+            return new MipMap(newbmp);
         }
     }
 }

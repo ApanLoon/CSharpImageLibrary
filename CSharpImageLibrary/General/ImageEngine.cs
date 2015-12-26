@@ -74,7 +74,7 @@ namespace CSharpImageLibrary.General
                 case ImageEngineFormat.JPG:
                 case ImageEngineFormat.PNG:
                     if (WindowsWICCodecsAvailable)
-                        MipMaps = Win8_10.LoadWithCodecs(stream, desiredMaxDimension, desiredMaxDimension, false);
+                        MipMaps = Win8_10.LoadWithCodecs(stream, desiredMaxDimension, desiredMaxDimension, false, !Format.SupportsTransparency);
                     else
                     {
                         int width, height;
@@ -89,7 +89,7 @@ namespace CSharpImageLibrary.General
                 case ImageEngineFormat.DDS_DXT4:
                 case ImageEngineFormat.DDS_DXT5:
                     if (WindowsWICCodecsAvailable)
-                        MipMaps = Win8_10.LoadWithCodecs(stream, desiredMaxDimension, desiredMaxDimension, true);
+                        MipMaps = Win8_10.LoadWithCodecs(stream, desiredMaxDimension, desiredMaxDimension, true, !Format.SupportsTransparency);
                     else
                         MipMaps = DDSGeneral.LoadDDS(stream, header, Format, desiredMaxDimension);
                     break;
@@ -130,15 +130,20 @@ namespace CSharpImageLibrary.General
                 var mip = MipMaps[0];
                 MipMaps.Clear();
                 MipMap output = null;
-
+                Debugger.Break();
                 int divisor = mip.Height < mip.Width ? mip.Width / desiredMaxDimension : mip.Height / desiredMaxDimension;
                 int newWidth = mip.Width == 1 ? 1 : mip.Width / divisor;
                 int newHeight = mip.Height == 1 ? 1 : mip.Height / divisor;
 
+
+                BitmapSource bmp = mip.BaseImage;
+                if (!Format.SupportsTransparency)
+                    bmp = new FormatConvertedBitmap(bmp, PixelFormats.Bgr32, null, 0);
+
                 if (WindowsWICCodecsAvailable)
-                    output = Win8_10.Resize(mip, 1f / divisor);
+                    output = Win8_10.Resize(bmp, 1f / divisor);
                 else
-                    output = Win7.Resize(mip, newWidth, newHeight);
+                    output = Win7.Resize(bmp, newWidth, newHeight);
 
                 MipMaps.Add(output);
             }
@@ -165,7 +170,7 @@ namespace CSharpImageLibrary.General
             List<MipMap> newMips = new List<MipMap>(MipMaps);
 
             if (temp.IsMippable && GenerateMips)
-                BuildMipMaps(newMips);
+                BuildMipMaps(newMips, !temp.SupportsTransparency);
 
             // KFreon: Resize if asked
             if (maxDimension != 0 && maxDimension < newMips[0].Width && maxDimension < newMips[0].Height) 
@@ -187,7 +192,11 @@ namespace CSharpImageLibrary.General
                     double scale = maxDimension * 1f / (newMips[0].Width > newMips[0].Height ? newMips[0].Width: newMips[0].Height);
 
                     // KFreon: No mip. Resize.
-                    newMips[0] = Resize(newMips[0], scale);
+                    BitmapSource bmp = newMips[0].BaseImage;
+                    if (!temp.SupportsTransparency)
+                        bmp = new FormatConvertedBitmap(bmp, PixelFormats.Bgr32, null, 0);
+
+                    newMips[0] = Resize(bmp, scale);
                 }
             }
 
@@ -223,12 +232,12 @@ namespace CSharpImageLibrary.General
 
         
 
-        internal static MipMap Resize(MipMap mipMap, double scale)
+        internal static MipMap Resize(BitmapSource bmp, double scale)
         {
             if (WindowsWICCodecsAvailable)
-                return Win8_10.Resize(mipMap, scale);
+                return Win8_10.Resize(bmp, scale);
             else
-                return Win7.Resize(mipMap, (int)(mipMap.Width * scale), (int)(mipMap.Height * scale));
+                return Win7.Resize(bmp, (int)(bmp.PixelWidth * scale), (int)(bmp.PixelHeight * scale));
         }
 
 
@@ -237,10 +246,10 @@ namespace CSharpImageLibrary.General
         /// </summary>
         /// <param name="MipMaps">List of Mipmaps, both existing and generated.</param>
         /// <returns>Number of mips present (generated or otherwise)</returns>
-        private static int BuildMipMaps(List<MipMap> MipMaps)
+        private static int BuildMipMaps(List<MipMap> MipMaps, bool ignoresAlpha)
         {
             if (WindowsWICCodecsAvailable)
-                return Win8_10.BuildMipMaps(MipMaps);
+                return Win8_10.BuildMipMaps(MipMaps, ignoresAlpha);
             else
                 return Win7.BuildMipMaps(MipMaps);
         }

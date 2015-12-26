@@ -138,6 +138,14 @@ namespace CSharpImageLibrary.General
             }
         }
 
+        public bool SupportsTransparency
+        {
+            get
+            {
+                return ImageFormats.DoesFormatSupportTransparency(InternalFormat);
+            }
+        }
+
 
         /// <summary>
         /// Size of a compressed block.
@@ -446,6 +454,32 @@ namespace CSharpImageLibrary.General
                 formatString = "dds";
 
             return formatString;
+        }
+
+        public static bool DoesFormatSupportTransparency(ImageEngineFormat surface)
+        {
+            switch (surface)
+            {
+                case ImageEngineFormat.BMP:
+                case ImageEngineFormat.DDS_A8L8:
+                case ImageEngineFormat.DDS_ATI1:
+                case ImageEngineFormat.DDS_ATI2_3Dc:
+                case ImageEngineFormat.DDS_DXT1:
+                case ImageEngineFormat.DDS_ARGB:
+                case ImageEngineFormat.DDS_G8_L8:
+                case ImageEngineFormat.DDS_RGB:
+                case ImageEngineFormat.DDS_V8U8:
+                case ImageEngineFormat.JPG:
+                    return false;
+                case ImageEngineFormat.DDS_DXT2:
+                case ImageEngineFormat.DDS_DXT3:
+                case ImageEngineFormat.DDS_DXT4:
+                case ImageEngineFormat.DDS_DXT5:
+                case ImageEngineFormat.PNG:
+                    return true;
+                default:
+                    return false;
+            }
         }
     }
 }
