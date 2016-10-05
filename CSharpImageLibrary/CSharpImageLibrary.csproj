@@ -93,6 +93,15 @@
       <SubType>Designer</SubType>
     </None>
     <Compile Include="DDSGeneral.cs" />
+    <Compile Include="Headers\AbstractHeader.cs" />
+    <Compile Include="Headers\BMP_Header.cs" />
+    <Compile Include="Headers\DDS_Header.cs" />
+    <Compile Include="Headers\GIF_Header.cs" />
+    <Compile Include="Headers\Headers.cs" />
+    <Compile Include="Headers\JPG_Header.cs" />
+    <Compile Include="Headers\PNG_Header.cs" />
+    <Compile Include="Headers\TGA_Header.cs" />
+    <Compile Include="Headers\TIFF_Header.cs" />
     <Compile Include="ImageEngineImage.cs" />
     <Compile Include="MipMap.cs" />
     <Compile Include="Targa.cs" />
@@ -161,6 +170,11 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="ImageEngine.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Decoders\" />
+    <Folder Include="Encoders\" />
+    <Folder Include="Manipulation\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

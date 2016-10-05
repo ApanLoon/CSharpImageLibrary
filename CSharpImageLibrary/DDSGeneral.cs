@@ -376,12 +376,9 @@ namespace CSharpImageLibrary
                 {
                     unsafe
                     {
-                        MipMaps[m].BaseImage.Lock();
-                        UnmanagedMemoryStream mipmap = new UnmanagedMemoryStream((byte*)MipMaps[m].BaseImage.BackBuffer.ToPointer(), MipMaps[m].Width * MipMaps[m].Height * 4);
-                        using (var compressed = WriteMipMap(mipmap, MipMaps[m].Width, MipMaps[m].Height, PixelWriter, isBCd))
-                            compressed.WriteTo(Destination);
-
-                        MipMaps[m].BaseImage.Unlock();
+                        using (UnmanagedMemoryStream mipmap = new UnmanagedMemoryStream((byte*)MipMaps[m].BaseImage.BackBuffer.ToPointer(), MipMaps[m].Width * MipMaps[m].Height * 4))
+                            using (var compressed = WriteMipMap(mipmap, MipMaps[m].Width, MipMaps[m].Height, PixelWriter, isBCd))
+                                compressed.WriteTo(Destination);
                     }
                 }
                 return true;
@@ -1823,20 +1820,31 @@ namespace CSharpImageLibrary
         /// <param name="Width">Image Width.</param>
         /// <param name="Height">Image Height.</param>
         /// <returns>Number of mipmaps expected for image.</returns>
-        internal static int EstimateNumMipMaps(int Width, int Height)
+        public static int EstimateNumMipMaps(int Width, int Height)
         {
             int limitingDimension = Width > Height ? Height : Width;
             return (int)Math.Log(limitingDimension, 2); // There's 10 mipmaps besides the main top one.
         }
 
-        internal static long EnsureMipInImage(long streamLength, int mainWidth, int mainHeight, int desiredMaxDimension, Format format, out int numMipMaps, double mipIndex = -1)
+        /// <summary>
+        /// Calculates whether a mipmap can be a part of the given image based on dimensions, format, and image data size.
+        /// </summary>
+        /// <param name="streamLength">Length of image data.</param>
+        /// <param name="mainWidth">Width of overall image.</param>
+        /// <param name="mainHeight">Height of overall image.</param>
+        /// <param name="desiredMaxDimension">Dimension of mip to find</param>
+        /// <param name="format">Format of image. Required as compressed formats take up varying space.</param>
+        /// <param name="numMipMaps">Number of detected mipmaps.</param>
+        /// <param name="mipIndex">Index of mip to check instead of desired dimension.</param>
+        /// <returns>Offset in stream of specified mip.</returns>
+        public static long EnsureMipInImage(long streamLength, int mainWidth, int mainHeight, int desiredMaxDimension, Format format, out int numMipMaps, double mipIndex = -1)
         {
             // TODO: Is the other estimated mips required?
 
             if (mainWidth <= desiredMaxDimension && mainHeight <= desiredMaxDimension)
             {
                 numMipMaps = EstimateNumMipMaps(mainWidth, mainHeight);
-                return 128; // One mip only
+                return 128; // Top mip indicated
             }
 
 
@@ -2076,10 +2084,8 @@ namespace CSharpImageLibrary
                         {
                             for (int m = 0; m < MipMaps.Count; m++)
                             {
-                                MipMaps[m].BaseImage.Lock();
-                                var stream = new UnmanagedMemoryStream((byte*)MipMaps[m].BaseImage.BackBuffer.ToPointer(), 4 * MipMaps[m].Width * MipMaps[m].Height);
-                                stream.CopyTo(Destination);
-                                MipMaps[m].BaseImage.Unlock();
+                                using (var stream = new UnmanagedMemoryStream((byte*)MipMaps[m].BaseImage.BackBuffer.ToPointer(), 4 * MipMaps[m].Width * MipMaps[m].Height))
+                                    stream.CopyTo(Destination);
                             }
                         }
                     }

@@ -357,14 +357,13 @@ namespace CSharpImageLibrary
 
             BitmapSource bmp;
             if (ShowAlpha)
-                bmp = mip.BaseImage;
+                bmp = (WriteableBitmap)mip.BaseImage;
             else
+            {
                 bmp = new FormatConvertedBitmap(mip.BaseImage, System.Windows.Media.PixelFormats.Bgr32, null, 0);
+            }
 
-            if (!bmp.IsFrozen)
-                bmp.Freeze();
-
-            return bmp;
+            return (BitmapSource)bmp.GetAsFrozen();
         }
 
 
@@ -455,7 +454,29 @@ namespace CSharpImageLibrary
                 }
             }
             mip.BaseImage.Freeze();
+            //return (BitmapSource)mip.BaseImage.GetAsFrozen();
             return mip.BaseImage;
+        }
+
+
+        /// <summary>
+        /// Generates mipmaps in place. Mostly useful only for DDS images.
+        /// </summary>
+        /// <returns>Number of mipmaps.</returns>
+        public int BuildMipMaps()
+        {
+            return DDSGeneral.BuildMipMaps(MipMaps, false);
+        }
+
+
+        /// <summary>
+        /// Removes all mipmaps except the top one.
+        /// </summary>
+        public void RemoveMipMaps()
+        {
+            var top = MipMaps.Pop(0);
+            MipMaps.Clear();
+            MipMaps.Add(top);
         }
     }
 }
