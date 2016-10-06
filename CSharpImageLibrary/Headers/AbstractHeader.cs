@@ -8,10 +8,10 @@ namespace CSharpImageLibrary.Headers
 {
     public abstract class AbstractHeader
     {
-        public int Width { get; private set; }
-        public int Height { get; private set; }
+        public abstract int Width { get; }
+        public abstract int Height { get; }
         // public format
         
-
+        public abstract int HeaderSize { get; }
     }
 }
