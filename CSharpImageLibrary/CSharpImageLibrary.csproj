@@ -92,7 +92,6 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </None>
-    <Compile Include="DDSGeneral.cs" />
     <Compile Include="Headers\AbstractHeader.cs" />
     <Compile Include="Headers\BMP_Header.cs" />
     <Compile Include="Headers\DDS_Header.cs" />
@@ -103,22 +102,10 @@
     <Compile Include="Headers\TGA_Header.cs" />
     <Compile Include="Headers\TIFF_Header.cs" />
     <Compile Include="ImageEngineImage.cs" />
+    <Compile Include="ImageFormat.cs" />
     <Compile Include="MipMap.cs" />
-    <Compile Include="Targa.cs" />
-    <Compile Include="ViewModel.cs" />
-    <Compile Include="WIC_Codecs.cs" />
-    <Page Include="MainWindow.xaml">
-      <Generator>MSBuild:Compile</Generator>
-      <SubType>Designer</SubType>
-    </Page>
     <Compile Include="App.xaml.cs">
       <DependentUpon>App.xaml</DependentUpon>
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="ImageEngine.cs" />
-    <Compile Include="ImageFormats.cs" />
-    <Compile Include="MainWindow.xaml.cs">
-      <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
