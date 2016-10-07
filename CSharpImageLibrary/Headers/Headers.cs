@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -35,9 +36,24 @@ namespace CSharpImageLibrary.Headers
             if (ID[0] == 'D' && ID[1] == 'D' && ID[2] == 'S')
                 header = new DDS_Header(stream);
 
-            // TGA
-
             // GIF
+
+            // TIFF
+            if (ID[0] == 'I' && ID[1] == 'I')
+                header = new TIFF_Header(stream);
+
+            // TGA
+            if (header == null)
+            {
+                try
+                {
+                    header = new TGA_Header(stream);
+                }
+                catch (Exception e)
+                {
+                    Debug.WriteLine(e.ToString());
+                }
+            }
 
             return header;
         }

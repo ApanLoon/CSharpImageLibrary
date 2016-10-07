@@ -16,9 +16,9 @@ namespace CSharpImageLibrary
     public class MipMap
     {
         /// <summary>
-        /// Pixels in bitmap image.
+        /// Pixels.
         /// </summary>
-        public WriteableBitmap BaseImage
+        public byte[] Pixels
         {
             get; set;
         }
@@ -34,16 +34,18 @@ namespace CSharpImageLibrary
         public int Height { get; set; }
 
 
-        /// <summary>
-        /// Creates a Mipmap object from a WPF image.
-        /// </summary>
-        /// <param name="baseimage">Image to base Mipmap on.</param>
-        public MipMap(BitmapSource baseimage)
+        public MipMap(byte[] pixels)
         {
-            BaseImage = new WriteableBitmap(baseimage);
-            BaseImage.Freeze();
-            Width = BaseImage.PixelWidth;
-            Height = BaseImage.PixelHeight;
+            Pixels = pixels;
+        }
+
+        public MipMap(BitmapSource source)
+        {
+            int stride = source.PixelWidth * 4;
+            Pixels = new byte[source.PixelHeight * stride];
+            source.CopyPixels(Pixels, stride, 0);
+            Width = source.PixelWidth;
+            Height = source.PixelHeight;
         }
     }
 }

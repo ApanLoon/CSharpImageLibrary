@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{10E9F41A-45D2-4CC4-B625-76C295FFDF67}</ProjectGuid>
-    <OutputType>Library</OutputType>
+    <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>CSharpImageLibrary</RootNamespace>
     <AssemblyName>CSharpImageLibrary</AssemblyName>
@@ -88,10 +88,17 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.xaml">
+    <Compile Include="Decoders\TargaDecoder.cs" />
+    <Compile Include="Encoders\TargaEncoder.cs" />
+    <Compile Include="MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ViewModel.cs" />
+    <Compile Include="WIC_Codecs.cs" />
+    <ApplicationDefinition Include="App.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
-    </None>
+    </ApplicationDefinition>
     <Compile Include="Headers\AbstractHeader.cs" />
     <Compile Include="Headers\BMP_Header.cs" />
     <Compile Include="Headers\DDS_Header.cs" />
@@ -101,6 +108,7 @@
     <Compile Include="Headers\PNG_Header.cs" />
     <Compile Include="Headers\TGA_Header.cs" />
     <Compile Include="Headers\TIFF_Header.cs" />
+    <Compile Include="ImageEngine.cs" />
     <Compile Include="ImageEngineImage.cs" />
     <Compile Include="ImageFormat.cs" />
     <Compile Include="MipMap.cs" />
@@ -159,9 +167,13 @@
     <Resource Include="ImageEngine.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="Decoders\" />
-    <Folder Include="Encoders\" />
     <Folder Include="Manipulation\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="MainWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

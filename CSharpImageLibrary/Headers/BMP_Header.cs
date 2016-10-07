@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -174,17 +175,8 @@ namespace CSharpImageLibrary.Headers
         #endregion Header Structs
 
 
-        public const int MaxHeaderSize = 54; // Only considering default header.
         FileHeader fileHeader = new FileHeader();
         DIBHeaders.BITMAPINFOHEADER BMPInfoHeader = new DIBHeaders.BITMAPINFOHEADER();
-
-        public override int HeaderSize
-        {
-            get
-            {
-                return 14 + 40;
-            }
-        }
 
         public override int Width
         {
@@ -223,7 +215,7 @@ namespace CSharpImageLibrary.Headers
             return sb.ToString();
         }
 
-        public BMP_Header()
+        public BMP_Header(Stream stream)
         {
 
         }

@@ -9,12 +9,10 @@ namespace CSharpImageLibrary.Headers
 {
     public abstract class AbstractHeader
     {
+        public static int MaxHeaderSize = 160;
+
         public abstract int Width { get; }
         public abstract int Height { get; }
-        public abstract ImageEngineFormat SurfaceFormat { get; }
-        
-        public abstract int HeaderSize { get; }
-
-        public AbstractHeader(Stream stream) { }
+        public ImageEngineFormat SurfaceFormat { get; internal set; }   
     }
 }
